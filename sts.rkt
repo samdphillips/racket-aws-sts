@@ -18,6 +18,8 @@
              (->* (string? string?)
                   ((or/c #f positive?))
                   sts-assume-role-result?)]
+           [sts-get-caller-identity
+             (-> sts-get-caller-identity-result?)]
            [sts-endpoint (parameter/c endpoint?)]
            [sts-region (parameter/c string?)]))
 
@@ -84,3 +86,10 @@
               (list (list 'DurationSeconds (number->string duration)))
               null))
        parse-assume-role-response))
+
+(define (sts-get-caller-identity)
+  (sts (endpoint->uri (sts-endpoint) "/")
+       '((Action "GetCallerIdentity")
+         (Version "2011-06-15"))
+       parse-get-caller-identity-response))
+
