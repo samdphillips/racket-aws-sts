@@ -6,14 +6,18 @@
          aws/util
          http/request
          racket/contract
-         racket/match
-         racket/stream
-         xml/xexpr)
+         xml/xexpr
+         "sts/private/de.rkt"
+         "sts/private/types.rkt")
 
 (provide (contract-out
            [sts (->* (string? (listof (list/c symbol? string?)))
-                     ((-> xexpr? stream?))
-                     stream?)]
+                     ((-> xexpr? any))
+                     any)]
+           [sts-assume-role
+             (->* (string? string?)
+                  ((or/c #f positive?))
+                  sts-assume-role-result?)]
            [sts-endpoint (parameter/c endpoint?)]
            [sts-region (parameter/c string?)]))
 
@@ -31,8 +35,7 @@
   implementation.  Changes:
 
     - Moved contract boundary to module.
-    - Changed result from `list?` to `stream?`
-      - Although I don't think that these results will ever be paged.
+    - Changed result from `list?` to `any`, and removed paging
 
     https://github.com/greghendershott/aws/blob/94a16a6875ac585a10fc488b1bf48052172d5668/aws/sqs.rkt#L31
 |#
@@ -57,14 +60,27 @@
                                    #:region  (sts-region)
                                    #:service "sts")]
          [x (post-with-retry uri params heads)])
-    (stream-append (result-proc x)
-                   ;; If a NextToken element in the response XML, we need to
-                   ;; call again to get more values.
-                   (match (se-path* '(NextToken) x)
-                     [#f '()]
-                     [token (sts uri
-                                 (set-next-token params token)
-                                 result-proc)]))))
+    (result-proc x)))
 
-
-
+; [O] DurationSeconds
+; [O] ExternalId
+; [O] Policy
+; [O] PolicyArns.member.N
+; [R] RoleArn
+; [R] RoleSessionName
+; [O] SerialNumber
+; [O] SourceIdentity
+; [O] Tags.member.N
+; [O] TokenCode
+; [O] TransitiveTagKeys.member.N
+(define (sts-assume-role role-arn role-session-name [duration #f])
+  (sts (endpoint->uri (sts-endpoint) "/")
+       `((Action  "AssumeRole")
+         (Version "2011-06-15")
+         (RoleArn ,role-arn)
+         (RoleSessionName ,role-session-name)
+         .
+         ,(if duration
+              (list (list 'DurationSeconds (number->string duration)))
+              null))
+       parse-assume-role-response))
