@@ -21,7 +21,8 @@
            [sts-get-caller-identity
              (-> sts-get-caller-identity-result?)]
            [sts-endpoint (parameter/c endpoint?)]
-           [sts-region (parameter/c string?)]))
+           [sts-region (parameter/c string?)])
+         (all-from-out "sts/private/types.rkt"))
 
 (define sts-region
   (make-parameter "us-east-1"))
